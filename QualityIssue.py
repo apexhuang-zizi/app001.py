@@ -134,20 +134,40 @@ if st.session_state.records:
             # 4. 生成并提供下载
             # 修改为这个写法：
             # 直接获取字节流，不需要手动指定编码
+            # --- 步骤 1：先将数据存入 Google Sheets (确保数据落地) ---
+        try:
+            # 这里的 df_new 是你准备好要写入的一行 DataFrame 数据
+            conn.create(data=df_new)
+            st.success("✅ 数据已成功同步至 Google Sheets！")
+        except Exception as e:
+            st.error(f"❌ 写入表格失败: {e}")
+
+        # --- 步骤 2：生成 PDF (修复编码报错的关键) ---
+        try:
+            from fpdf import FPDF
+            pdf = FPDF()
+            pdf.add_page()
+            
+            # 必须加载你上传的字体才能处理中文
+            pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
+            pdf.set_font('MultiLang', size=12)
+            
+            # 写入内容
+            pdf.cell(200, 10, txt=f"项目ID: {p_id}", ln=True)
+            pdf.cell(200, 10, txt=f"详情: {issue_desc}", ln=True)
+
+            # 【关键修改】：fpdf2 默认输出字节流，直接使用，严禁加 .encode('latin-1')
             pdf_output = pdf.output() 
 
+            # --- 步骤 3：提供下载按钮 ---
             st.download_button(
-                label="✅ 确认生成并下载 PDF",
-                data=bytes(pdf_output), # 将 pdf.output() 的结果转换为字节
+                label="📥 点击下载 PDF 报告",
+                data=bytes(pdf_output),  # 强制转换为字节流
                 file_name=f"{p_id}_Report.pdf",
                 mime="application/pdf"
             )
-            st.download_button(
-                label="✅ 确认生成并下载 PDF",
-                data=pdf_output,
-                file_name=f"{p_id}_Report.pdf",
-                mime="application/pdf"
-            )
+        except Exception as pdf_e:
+            st.warning(f"⚠️ 数据已保存，但 PDF 生成失败: {pdf_e}")
 
         # 取消并保存
         with col_btn2:
