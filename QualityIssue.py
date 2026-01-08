@@ -133,13 +133,15 @@ if st.session_state.records:
             
             # 4. 生成并提供下载
             # 修改为这个写法：
-            pdf_output = pdf.output()  # fpdf2 默认直接输出字节数组(bytearray)
+            # 直接获取字节流，不需要手动指定编码
+            pdf_output = pdf.output() 
+
             st.download_button(
                 label="✅ 确认生成并下载 PDF",
-                data=bytes(pdf_output), # 将其转换为字节
+                data=bytes(pdf_output), # 将 pdf.output() 的结果转换为字节
                 file_name=f"{p_id}_Report.pdf",
                 mime="application/pdf"
-            ) 
+            )
             st.download_button(
                 label="✅ 确认生成并下载 PDF",
                 data=pdf_output,
