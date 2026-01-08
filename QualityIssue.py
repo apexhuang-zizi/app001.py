@@ -129,7 +129,7 @@ pdf.set_font('MultiLang', size=12)
 # 这样输出的文字就不会是乱码或问号了
 pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
 
-            ＃ pdf.set_font("Arial", size=12) 
+            # pdf.set_font("Arial", size=12)
             pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
             pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
             
