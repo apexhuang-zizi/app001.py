@@ -112,29 +112,33 @@ if st.session_state.records:
         
         col_btn1, col_btn2 = st.columns(2)
         
-        # 确认导出
+    # 确认导出
         with col_btn1:
-            # 此处生成 PDF 逻辑
-
-            # 在 PDF 生成逻辑处修改
-          from fpdf import FPDF
+            # 1. 导入和初始化 (注意：所有的行现在都整齐地对齐了)
+            from fpdf import FPDF
             pdf = FPDF()
             pdf.add_page()
-            # 注意：实际使用需 pdf.add_font 载入中文字体
 
-            # --- 关键步骤：注册并使用你上传的字体 ---
-            # 注意：文件名必须与你上传到 GitHub 的文件名完全一致
-            pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
-            pdf.set_font('MultiLang', size=12)
-            # 这样输出的文字就不会是乱码或问号了
-            pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
+            # 2. 注册并使用字体 (确保 NotoSansSC-Regular.ttf 文件在 GitHub 根目录)
+            try:
+                pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
+                pdf.set_font('MultiLang', size=12)
+            except:
+                # 如果字体没找到，暂时回退到 Arial 避免崩溃
+                pdf.set_font("Arial", size=12)
 
-            # pdf.set_font("Arial", size=12)
+            # 3. 写入内容
             pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
             pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
             
+            # 4. 生成并提供下载
             pdf_output = pdf.output(dest='S').encode('latin-1', 'ignore') 
-            st.download_button("✅ 确认生成并下载 PDF", data=pdf_output, file_name=f"{p_id}_Report.pdf")
+            st.download_button(
+                label="✅ 确认生成并下载 PDF",
+                data=pdf_output,
+                file_name=f"{p_id}_Report.pdf",
+                mime="application/pdf"
+            )
 
         # 取消并保存
         with col_btn2:
