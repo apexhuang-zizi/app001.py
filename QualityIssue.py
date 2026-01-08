@@ -146,3 +146,9 @@ if st.session_state.records:
                 st.session_state.cloud_data.extend(st.session_state.records)
                 st.session_state.records = []
                 st.success("已安全保存到云端数据库！")
+        # 在 app.py 的末尾添加
+        st.divider() # 画一条分割线
+        st.subheader("📊 已录入数据汇总")
+        # 从 Google Sheets 获取所有数据并显示
+        data = conn.read(spreadsheet=st.secrets["connections"]["gsheets"]["spreadsheet"])
+        st.dataframe(data)
