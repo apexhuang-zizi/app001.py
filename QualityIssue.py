@@ -132,7 +132,14 @@ if st.session_state.records:
             pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
             
             # 4. 生成并提供下载
-            pdf_output = pdf.output(dest='S').encode('latin-1', 'ignore') 
+            # 修改为这个写法：
+            pdf_output = pdf.output()  # fpdf2 默认直接输出字节数组(bytearray)
+                 st.download_button(
+            label="✅ 确认生成并下载 PDF",
+            data=bytes(pdf_output), # 将其转换为字节
+            file_name=f"{p_id}_Report.pdf",
+            mime="application/pdf"
+            ) 
             st.download_button(
                 label="✅ 确认生成并下载 PDF",
                 data=pdf_output,
