@@ -117,12 +117,7 @@ if st.session_state.records:
             # 此处生成 PDF 逻辑
 
             # 在 PDF 生成逻辑处修改
-from fpdf import FP
-
-
-
-
-pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
+from fpdf import FPDF
             pdf = FPDF()
             pdf.add_page()
             # 注意：实际使用需 pdf.add_font 载入中文字体
@@ -132,6 +127,7 @@ pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
 pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
 pdf.set_font('MultiLang', size=12)
 # 这样输出的文字就不会是乱码或问号了
+pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
 
             ＃ pdf.set_font("Arial", size=12) 
             pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
