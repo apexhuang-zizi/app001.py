@@ -115,10 +115,25 @@ if st.session_state.records:
         # 确认导出
         with col_btn1:
             # 此处生成 PDF 逻辑
+
+            # 在 PDF 生成逻辑处修改
+from fpdf import FP
+
+
+
+
+pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
             pdf = FPDF()
             pdf.add_page()
             # 注意：实际使用需 pdf.add_font 载入中文字体
-            pdf.set_font("Arial", size=12) 
+
+# --- 关键步骤：注册并使用你上传的字体 ---
+# 注意：文件名必须与你上传到 GitHub 的文件名完全一致
+pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
+pdf.set_font('MultiLang', size=12)
+# 这样输出的文字就不会是乱码或问号了
+
+            ＃ pdf.set_font("Arial", size=12) 
             pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
             pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
             
