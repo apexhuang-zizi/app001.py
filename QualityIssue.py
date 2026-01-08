@@ -117,7 +117,7 @@ if st.session_state.records:
             # 此处生成 PDF 逻辑
 
             # 在 PDF 生成逻辑处修改
-        from fpdf import FPDF
+          from fpdf import FPDF
             pdf = FPDF()
             pdf.add_page()
             # 注意：实际使用需 pdf.add_font 载入中文字体
