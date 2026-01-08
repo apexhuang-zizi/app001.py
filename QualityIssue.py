@@ -1,25 +1,61 @@
-streamlit
-pandas
-fpdf2
-st-gsheets-connection
-# --- 2. 初始化数据存储 (Session State) ---
+import streamlit as st
+import pandas as pd
+from fpdf import FPDF
+from datetime import datetime
+from PIL import Image
+import io
+from st_gsheets_connection import GSheetsConnection
+
+# --- 1. 初始化连接 (解决 conn is not defined 问题) ---
+# 这部分必须放在代码最前面
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# --- 2. 配置与多语言字典 ---
+LANG = {
+    "中文": {
+        "title": "品质问题记录表", "proj_id": "项目ID", "order_id": "工单号", 
+        "name": "项目名称", "cat": "问题分类", "desc": "问题描述", 
+        "dept": "责任部门", "owner": "跟进人", "res": "处理结果", 
+        "img": "问题图片", "rem": "备注", "date": "记录日期", 
+        "rec": "记录人", "export": "导出PDF", "save": "保存到云端",
+        "confirm": "预览并确认", "total": "总计条数", "sum_cat": "分类统计"
+    },
+    "English": {
+        "title": "Quality Issue Report", "proj_id": "Project ID", "order_id": "Work Order", 
+        "name": "Project Name", "cat": "Category", "desc": "Description", 
+        "dept": "Department", "owner": "Follower", "res": "Result", 
+        "img": "Image", "rem": "Remark", "date": "Date", 
+        "rec": "Recorder", "export": "Export PDF", "save": "Save to Cloud",
+        "confirm": "Preview & Confirm", "total": "Total Issues", "sum_cat": "Summary by Category"
+    },
+    "Tiếng Việt": {
+        "title": "Bảng ghi chép vấn đề chất lượng", "proj_id": "Mã dự án", "order_id": "Số lệnh", 
+        "name": "Tên dự án", "cat": "Phân loại", "desc": "Mô tả", 
+        "dept": "Bộ phận trách nhiệm", "owner": "Người theo dõi", "res": "Kết quả", 
+        "img": "Hình ảnh", "rem": "Ghi chú", "date": "Ngày ghi", 
+        "rec": "Người ghi", "export": "Xuất PDF", "save": "Lưu vào mây",
+        "confirm": "Xem trước & Xác nhận", "total": "Tổng số", "sum_cat": "Thống kê phân loại"
+    }
+}
+
+st.set_page_config(layout="wide", page_title="Quality Audit Tool")
+
+# --- 3. 初始化 Session State ---
 if "records" not in st.session_state:
     st.session_state.records = []
-if "cloud_data" not in st.session_state:
-    st.session_state.cloud_data = []
 
 # 选择语言
 lang_choice = st.sidebar.selectbox("Language / 语言 / Ngôn ngữ", ["中文", "English", "Tiếng Việt"])
 L = LANG[lang_choice]
 
-# --- 3. 页面头部 & 平面图 ---
+# --- 4. 页面头部 ---
 st.title(f"📄 {L['title']}")
 st.subheader("📍 项目平面图 (Floor Plan)")
 floor_plan = st.file_uploader("上传/更改平面图", type=['png', 'jpg', 'jpeg'])
 if floor_plan:
     st.image(floor_plan, caption="Project Layout", width=400)
 
-# --- 4. 数据录入表单 ---
+# --- 5. 数据录入表单 ---
 with st.expander("➕ 点击录入新问题 / Add New Issue", expanded=True):
     with st.form("main_form", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
@@ -40,111 +76,74 @@ with st.expander("➕ 点击录入新问题 / Add New Issue", expanded=True):
         img_file = st.file_uploader(L['img'], type=['jpg', 'png'])
         remark = st.text_input(L['rem'])
         
-        if st.form_submit_button("添加记录 (Add to List)"):
+        submitted = st.form_submit_button("确认录入并上传云端")
+        
+        if submitted:
+            # 构造字典
             new_data = {
                 L['proj_id']: p_id, L['order_id']: o_id, L['name']: p_name,
                 L['cat']: cat, L['desc']: desc, L['dept']: dept,
                 L['owner']: owner, L['date']: str(date_val), L['rec']: recorder,
-                L['res']: res, L['rem']: remark, "img_raw": img_file
+                L['res']: res, L['rem']: remark
             }
-            st.session_state.records.append(new_data)
-            st.success("Record added!")
+            
+            # 步骤 A: 写入 Google Sheets
+            try:
+                df_to_save = pd.DataFrame([new_data])
+                conn.create(data=df_to_save)
+                st.success("✅ 数据已同步至 Google Sheets！")
+                # 记录在当前 Session
+                st.session_state.records.append(new_data)
+            except Exception as e:
+                st.error(f"❌ 写入表格失败，请检查 Secrets 配置: {e}")
 
-# --- 5. 数据预览与汇总 ---
+# --- 6. 数据展示与 PDF 生成 ---
 if st.session_state.records:
     df = pd.DataFrame(st.session_state.records)
     st.divider()
-    st.subheader("📋 问题清单预览")
-    # 显示图片预览
-    st.write("---")
-    for i, row in df.iterrows():
-        cols = st.columns([1, 4, 2])
-        with cols[0]:
-            if row["img_raw"]:
-                st.image(row["img_raw"], width=100)
-        with cols[1]:
-            st.write(f"**{row[L['proj_id']]} - {row[L['cat']]}**")
-            st.write(f"描述: {row[L['desc']]}")
-        with cols[2]:
-            st.write(f"跟进人: {row[L['owner']]}")
-    
-    # 汇总统计
-    st.info(f"📊 {L['total']}: {len(df)} | {L['sum_cat']}: {df[L['cat']].value_counts().to_dict()}")
+    st.subheader("📋 本次录入清单预览")
+    st.dataframe(df)
 
-    # --- 6. 导出预览与确认弹窗 ---
-    st.write("---")
-    if st.button(f"🚀 {L['confirm']}"):
-        st.warning("即将生成PDF报告，请确认以下信息：")
-        st.table(df.drop(columns=["img_raw"])) # 预览文字部分
-        
-        col_btn1, col_btn2 = st.columns(2)
-        
-    # 确认导出
-        with col_btn1:
-            # 1. 导入和初始化 (注意：所有的行现在都整齐地对齐了)
-            from fpdf import FPDF
+    # 生成 PDF 报告
+    if st.button(f"🚀 {L['export']}"):
+        try:
             pdf = FPDF()
             pdf.add_page()
-
-            # 2. 注册并使用字体 (确保 NotoSansSC-Regular.ttf 文件在 GitHub 根目录)
+            
+            # 加载中文字体
             try:
                 pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
-                pdf.set_font('MultiLang', size=12)
+                pdf.set_font('MultiLang', size=16)
             except:
-                # 如果字体没找到，暂时回退到 Arial 避免崩溃
-                pdf.set_font("Arial", size=12)
-
-            # 3. 写入内容
-            pdf.cell(200, 10, txt=f"{p_id} {L['title']}", ln=True, align='C')
+                pdf.set_font("Arial", size=16)
+            
+            pdf.cell(200, 10, txt=L['title'], ln=True, align='C')
+            pdf.set_font('MultiLang', size=10) if 'MultiLang' in pdf.fonts else pdf.set_font("Arial", size=10)
+            
+            # 写入最近一条记录作为示例
+            latest = st.session_state.records[-1]
+            pdf.ln(10)
+            pdf.cell(200, 10, txt=f"{L['proj_id']}: {latest[L['proj_id']]}", ln=True)
+            pdf.cell(200, 10, txt=f"{L['desc']}: {latest[L['desc']]}", ln=True)
             pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
-            
-            # 4. 生成并提供下载
-            # 修改为这个写法：
-            # 直接获取字节流，不需要手动指定编码
-            # --- 步骤 1：先将数据存入 Google Sheets (确保数据落地) ---
-        try:
-            # 这里的 df_new 是你准备好要写入的一行 DataFrame 数据
-            conn.create(data=df_new)
-            st.success("✅ 数据已成功同步至 Google Sheets！")
-        except Exception as e:
-            st.error(f"❌ 写入表格失败: {e}")
 
-        # --- 步骤 2：生成 PDF (修复编码报错的关键) ---
-        try:
-            from fpdf import FPDF
-            pdf = FPDF()
-            pdf.add_page()
-            
-            # 必须加载你上传的字体才能处理中文
-            pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
-            pdf.set_font('MultiLang', size=12)
-            
-            # 写入内容
-            pdf.cell(200, 10, txt=f"项目ID: {p_id}", ln=True)
-            pdf.cell(200, 10, txt=f"详情: {issue_desc}", ln=True)
-
-            # 【关键修改】：fpdf2 默认输出字节流，直接使用，严禁加 .encode('latin-1')
-            pdf_output = pdf.output() 
-
-            # --- 步骤 3：提供下载按钮 ---
+            # 核心修复：直接使用 bytes(pdf.output()) 避开 Unicode 报错
+            pdf_bytes = pdf.output()
             st.download_button(
                 label="📥 点击下载 PDF 报告",
-                data=bytes(pdf_output),  # 强制转换为字节流
-                file_name=f"{p_id}_Report.pdf",
+                data=bytes(pdf_bytes),
+                file_name=f"Report_{datetime.now().strftime('%H%M%S')}.pdf",
                 mime="application/pdf"
             )
         except Exception as pdf_e:
-            st.warning(f"⚠️ 数据已保存，但 PDF 生成失败: {pdf_e}")
+            st.error(f"PDF 生成出错: {pdf_e}")
 
-        # 取消并保存
-        with col_btn2:
-            if st.button("❌ 取消并保存到云端"):
-                st.session_state.cloud_data.extend(st.session_state.records)
-                st.session_state.records = []
-                st.success("已安全保存到云端数据库！")
-        # 在 app.py 的末尾添加
-        st.divider() # 画一条分割线
-        st.subheader("📊 已录入数据汇总")
-        # 从 Google Sheets 获取所有数据并显示
-        data = conn.read(spreadsheet=st.secrets["connections"]["gsheets"]["spreadsheet"])
-        st.dataframe(data)
+# --- 7. 查看云端全量数据 ---
+st.divider()
+st.subheader("📊 已录入全量数据汇总 (Google Sheets)")
+if st.button("刷新云端数据"):
+    try:
+        all_data = conn.read()
+        st.dataframe(all_data)
+    except:
+        st.info("暂无云端数据或连接未建立")
