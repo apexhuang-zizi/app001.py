@@ -1,40 +1,7 @@
-import streamlit as st
-import pandas as pd
-from fpdf import FPDF
-from datetime import datetime
-from PIL import Image
-import io
-
-# --- 1. 配置与多语言字典 ---
-LANG = {
-    "中文": {
-        "title": "品质问题记录表", "proj_id": "项目ID", "order_id": "工单号", 
-        "name": "项目名称", "cat": "问题分类", "desc": "问题描述", 
-        "dept": "责任部门", "owner": "跟进人", "res": "处理结果", 
-        "img": "问题图片", "rem": "备注", "date": "记录日期", 
-        "rec": "记录人", "export": "导出PDF", "save": "保存到云端",
-        "confirm": "预览并确认", "total": "总计条数", "sum_cat": "分类统计"
-    },
-    "English": {
-        "title": "Quality Issue Report", "proj_id": "Project ID", "order_id": "Work Order", 
-        "name": "Project Name", "cat": "Category", "desc": "Description", 
-        "dept": "Department", "owner": "Follower", "res": "Result", 
-        "img": "Image", "rem": "Remark", "date": "Date", 
-        "rec": "Recorder", "export": "Export PDF", "save": "Save to Cloud",
-        "confirm": "Preview & Confirm", "total": "Total Issues", "sum_cat": "Summary by Category"
-    },
-    "Tiếng Việt": {
-        "title": "Bảng ghi chép vấn đề chất lượng", "proj_id": "Mã dự án", "order_id": "Số lệnh", 
-        "name": "Tên dự án", "cat": "Phân loại", "desc": "Mô tả", 
-        "dept": "Bộ phận trách nhiệm", "owner": "Người theo dõi", "res": "Kết quả", 
-        "img": "Hình ảnh", "rem": "Ghi chú", "date": "Ngày ghi", 
-        "rec": "Người ghi", "export": "Xuất PDF", "save": "Lưu vào mây",
-        "confirm": "Xem trước & Xác nhận", "total": "Tổng số", "sum_cat": "Thống kê phân loại"
-    }
-}
-
-st.set_page_config(layout="wide", page_title="Quality Audit Tool")
-
+streamlit
+pandas
+fpdf2
+st-gsheets-connection
 # --- 2. 初始化数据存储 (Session State) ---
 if "records" not in st.session_state:
     st.session_state.records = []
