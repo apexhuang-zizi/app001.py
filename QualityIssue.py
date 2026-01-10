@@ -4,7 +4,7 @@ from fpdf import FPDF
 from datetime import datetime
 from PIL import Image
 import io
-from st-gsheets-connection import GSheetsConnection
+from st_gsheets_connection import GSheetsConnection
 
 # --- 1. 初始化 Google Sheets 连接 (解决 conn 未定义问题) ---
 conn = st.connection("gsheets", type=GSheetsConnection)
