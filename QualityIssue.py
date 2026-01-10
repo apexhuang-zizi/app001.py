@@ -2,7 +2,7 @@ import streamlit as st
 
 import pandas as pd
 
-from fpdf2 import FPDF
+from fpdf import FPDF
 
 from datetime import datetime
 
@@ -232,7 +232,7 @@ if st.session_state.records:
 
             # 1. 导入和初始化 (注意：所有的行现在都整齐地对齐了)
 
-            from fpdf2 import FPDF
+            from fpdf import FPDF
 
             pdf = FPDF()
 
@@ -290,7 +290,7 @@ if st.session_state.records:
 
         try:
 
-            from fpdf2 import FPDF
+            from fpdf import FPDF
 
             pdf = FPDF()
 
