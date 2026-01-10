@@ -289,7 +289,7 @@ if st.session_state.records:
         # --- 步骤 2：生成 PDF (修复编码报错的关键) ---
 
         # --- 修正后的 PDF 生成逻辑 ---
-       try:
+        try:
             from fpdf import FPDF
             pdf = FPDF()
             pdf.add_page()
