@@ -308,18 +308,18 @@ if st.session_state.records:
 
             # --- 写入中文 ---
             # 确保这里的每一行 cell 之前没有切换回 helvetica
-    pdf.cell(200, 10, txt=f"项目记录: {p_id}", ln=True) 
-    pdf.cell(200, 10, txt=f"内容: {desc}", ln=True)
+            pdf.cell(200, 10, txt=f"项目记录: {p_id}", ln=True) 
+            pdf.cell(200, 10, txt=f"内容: {desc}", ln=True)
     
-    pdf_output = pdf.output()
-    st.download_button(
-        label="📥 下载 PDF",
-        data=bytes(pdf_output),
-        file_name="Report.pdf",
-        mime="application/pdf"
-    )
-except Exception as e:
-    st.error(f"PDF生成失败: {e}")
+            pdf_output = pdf.output()
+            st.download_button(
+                label="📥 下载 PDF",
+                data=bytes(pdf_output),
+                file_name="Report.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"PDF生成失败: {e}")
 
 
 
