@@ -288,38 +288,44 @@ if st.session_state.records:
 
         # --- 步骤 2：生成 PDF (修复编码报错的关键) ---
 
-        try:
+        # --- 修正后的 PDF 生成逻辑 ---
+       try:
             from fpdf import FPDF
             pdf = FPDF()
             pdf.add_page()
-    
-            # --- 关键修复：确保字体文件路径正确 ---
-            # 使用 uni=True (针对旧版 fpdf) 或直接 add_font (针对 fpdf2)
-            # 假设你的字体文件就在根目录
-            import os
-            font_path = "NotoSansSC-Regular.ttf"
-    
-            if os.path.exists(font_path):
-                pdf.add_font('MultiLang', '', font_path) # fpdf2 默认支持 Unicode
-                pdf.set_font('MultiLang', size=12)
-            else:
-                st.error(f"找不到字体文件: {font_path}，请确保已上传到 GitHub")
-                st.stop() # 停止执行，防止崩溃
 
-            # --- 写入中文 ---
-            # 确保这里的每一行 cell 之前没有切换回 helvetica
-            pdf.cell(200, 10, txt=f"项目记录: {p_id}", ln=True) 
-            pdf.cell(200, 10, txt=f"内容: {desc}", ln=True)
-    
+            # 1. 尝试加载字体 (确保文件名与 GitHub 中完全一致)
+            font_name = "NotoSansSC-Regular.ttf"
+            try:
+                pdf.add_font('MultiLang', '', font_name)
+                pdf.set_font('MultiLang', size=16)
+                has_font = True
+            except Exception as font_error:
+                st.error(f"字体加载失败: {font_error}")
+                pdf.set_font("Arial", size=16) # 降级方案
+                has_font = False
+
+            # 2. 写入标题 (报错发生的 261 行)
+            # 如果加载了中文字体，就能正常运行；如果没有，我们强制转为英文避免崩溃
+            title_text = f"{p_id} {L['title']}" if has_font else f"{p_id} Quality Report"
+            pdf.cell(200, 10, txt=title_text, ln=True, align='C')
+
+            # 3. 写入后续内容
+            pdf.set_font('MultiLang', size=12) if has_font else pdf.set_font("Arial", size=12)
+            pdf.ln(10)
+            pdf.cell(200, 10, txt=f"Date: {datetime.now().strftime('%Y-%m-%d')}", ln=True)
+
+            # 4. 生成字节流并提供下载
             pdf_output = pdf.output()
             st.download_button(
-                label="📥 下载 PDF",
+                label="📥 下载 PDF 报告",
                 data=bytes(pdf_output),
-                file_name="Report.pdf",
+                file_name=f"Report_{p_id}.pdf",
                 mime="application/pdf"
             )
+
         except Exception as e:
-            st.error(f"PDF生成失败: {e}")
+            st.error(f"⚠️ PDF 生成过程中发生错误: {e}")
 
 
 
