@@ -288,26 +288,26 @@ if st.session_state.records:
 
         # --- 步骤 2：生成 PDF (修复编码报错的关键) ---
 
-try:
-    from fpdf import FPDF
-    pdf = FPDF()
-    pdf.add_page()
+        try:
+            from fpdf import FPDF
+            pdf = FPDF()
+            pdf.add_page()
     
-    # --- 关键修复：确保字体文件路径正确 ---
-    # 使用 uni=True (针对旧版 fpdf) 或直接 add_font (针对 fpdf2)
-    # 假设你的字体文件就在根目录
-    import os
-    font_path = "NotoSansSC-Regular.ttf"
+            # --- 关键修复：确保字体文件路径正确 ---
+            # 使用 uni=True (针对旧版 fpdf) 或直接 add_font (针对 fpdf2)
+            # 假设你的字体文件就在根目录
+            import os
+            font_path = "NotoSansSC-Regular.ttf"
     
-    if os.path.exists(font_path):
-        pdf.add_font('MultiLang', '', font_path) # fpdf2 默认支持 Unicode
-        pdf.set_font('MultiLang', size=12)
-    else:
-        st.error(f"找不到字体文件: {font_path}，请确保已上传到 GitHub")
-        st.stop() # 停止执行，防止崩溃
+            if os.path.exists(font_path):
+                pdf.add_font('MultiLang', '', font_path) # fpdf2 默认支持 Unicode
+                pdf.set_font('MultiLang', size=12)
+            else:
+                st.error(f"找不到字体文件: {font_path}，请确保已上传到 GitHub")
+                st.stop() # 停止执行，防止崩溃
 
-    # --- 写入中文 ---
-    # 确保这里的每一行 cell 之前没有切换回 helvetica
+            # --- 写入中文 ---
+            # 确保这里的每一行 cell 之前没有切换回 helvetica
     pdf.cell(200, 10, txt=f"项目记录: {p_id}", ln=True) 
     pdf.cell(200, 10, txt=f"内容: {desc}", ln=True)
     
