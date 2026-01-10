@@ -244,7 +244,7 @@ if st.session_state.records:
 
             try:
 
-                pdf.add_font('MultiLang', '', 'NotoSansSC-VariableFont_wght.ttf', uni=True)
+                pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
                 pdf.add_font('ChineseFont', '', font_file)
                 pdf.set_font('MultiLang', size=12)
                 # 加载时加上 uni=True (针对旧版兼容)
