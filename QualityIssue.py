@@ -288,55 +288,38 @@ if st.session_state.records:
 
         # --- 步骤 2：生成 PDF (修复编码报错的关键) ---
 
-        try:
+try:
+    from fpdf import FPDF
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # --- 关键修复：确保字体文件路径正确 ---
+    # 使用 uni=True (针对旧版 fpdf) 或直接 add_font (针对 fpdf2)
+    # 假设你的字体文件就在根目录
+    import os
+    font_path = "NotoSansSC-Regular.ttf"
+    
+    if os.path.exists(font_path):
+        pdf.add_font('MultiLang', '', font_path) # fpdf2 默认支持 Unicode
+        pdf.set_font('MultiLang', size=12)
+    else:
+        st.error(f"找不到字体文件: {font_path}，请确保已上传到 GitHub")
+        st.stop() # 停止执行，防止崩溃
 
-            from fpdf import FPDF
-
-            pdf = FPDF()
-
-            pdf.add_page()
-
-            
-
-            # 必须加载你上传的字体才能处理中文
-
-            pdf.add_font('MultiLang', '', 'NotoSansSC-Regular.ttf', uni=True)
-
-            pdf.set_font('MultiLang', size=12)
-
-            
-
-            # 写入内容
-
-            pdf.cell(200, 10, txt=f"项目ID: {p_id}", ln=True)
-
-            pdf.cell(200, 10, txt=f"详情: {issue_desc}", ln=True)
-
-
-
-            # 【关键修改】：fpdf2 默认输出字节流，直接使用，严禁加 .encode('latin-1')
-
-            pdf_output = pdf.output() 
-
-
-
-            # --- 步骤 3：提供下载按钮 ---
-
-            st.download_button(
-
-                label="📥 点击下载 PDF 报告",
-
-                data=bytes(pdf_output),  # 强制转换为字节流
-
-                file_name=f"{p_id}_Report.pdf",
-
-                mime="application/pdf"
-
-            )
-
-        except Exception as pdf_e:
-
-            st.warning(f"⚠️ 数据已保存，但 PDF 生成失败: {pdf_e}")
+    # --- 写入中文 ---
+    # 确保这里的每一行 cell 之前没有切换回 helvetica
+    pdf.cell(200, 10, txt=f"项目记录: {p_id}", ln=True) 
+    pdf.cell(200, 10, txt=f"内容: {desc}", ln=True)
+    
+    pdf_output = pdf.output()
+    st.download_button(
+        label="📥 下载 PDF",
+        data=bytes(pdf_output),
+        file_name="Report.pdf",
+        mime="application/pdf"
+    )
+except Exception as e:
+    st.error(f"PDF生成失败: {e}")
 
 
 
