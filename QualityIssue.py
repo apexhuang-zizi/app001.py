@@ -1,123 +1,119 @@
 import streamlit as st
 import pandas as pd
-from fpdf import FPDF
 from datetime import datetime
-import os
-import sys
-import subprocess
+from st_gsheets_connection import GSheetsConnection
+import io
 
-# --- 1. 自动环境检查 (解决 ModuleNotFoundError) ---
-try:
-    from st_gsheets_connection import GSheetsConnection
-except ImportError:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "st-gsheets-connection"])
-    from st_gsheets_connection import GSheetsConnection
-
-# --- 2. 页面与连接配置 ---
+# --- 1. 初始化 ---
 st.set_page_config(layout="wide", page_title="Quality Audit Tool")
 
 # 初始化 Google Sheets 连接
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
 except Exception as e:
-    st.error(f"❌ 数据库连接初始化失败，请检查 Secrets 配置: {e}")
+    st.error("❌ 数据库连接失败，请检查 Secrets 配置。")
 
-# 多语言设置
-LANG = {
-    "中文": {
-        "title": "品质问题记录表", "proj_id": "项目ID", "name": "项目名称", 
-        "cat": "问题分类", "desc": "问题描述", "owner": "跟进人", 
-        "date": "记录日期", "save": "提交并上传云端", "refresh": "刷新云端数据"
-    }
+# 语言字典
+L = {
+    "title": "品质问题记录表", 
+    "proj_id": "项目ID", "name": "项目名称", 
+    "cat": "问题分类", "desc": "问题描述", "owner": "跟进人", 
+    "save": "🚀 提交到云端", "refresh": "🔄 刷新并查看表格"
 }
-L = LANG["中文"]
 
 st.title(f"📄 {L['title']}")
 
-# --- 3. 数据录入表单 ---
+# --- 2. 数据录入表单 ---
 with st.form("main_form", clear_on_submit=True):
     col1, col2 = st.columns(2)
     with col1:
         p_id = st.text_input(L['proj_id'])
         p_name = st.text_input(L['name'])
     with col2:
-        cat = st.selectbox(L['cat'], ["外观/Visual", "功能/Function", "包装/Packing", "其他/Other"])
+        cat = st.selectbox(L['cat'], ["外观/Visual", "功能/Function", "其他/Other"])
         owner = st.text_input(L['owner'])
     
     desc = st.text_area(L['desc'])
     submitted = st.form_submit_button(L['save'])
 
-# --- 4. 提交逻辑：先存数据，再试 PDF ---
+# --- 3. 核心提交逻辑：只存入 Google Sheets ---
 if submitted:
     if not p_id or not desc:
-        st.warning("⚠️ 请至少填写项目ID和问题描述。")
+        st.warning("⚠️ ID和描述不能为空")
     else:
-        # --- 步骤 A：先保存到 Google Sheets (确保数据安全) ---
         try:
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            # 准备数据
             new_row = pd.DataFrame([{
                 L['proj_id']: p_id,
                 L['name']: p_name,
                 L['cat']: cat,
                 L['desc']: desc,
                 L['owner']: owner,
-                L['date']: timestamp
+                "记录日期": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }])
-            
-            # 写入云端表格
+            # 写入云端
             conn.create(data=new_row)
-            st.success("✅ 数据已成功保存到 Google Sheets！")
-            
-            # --- 步骤 B：尝试生成 PDF (修复 Unicode/latin-1 报错) ---
+            st.success("✅ 数据已安全同步至 Google Sheets！")
+            st.balloons() # 成功特效
+        except Exception as e:
+            st.error(f"❌ 存入失败: {e}")
+
+# --- 4. 数据展示与导出功能 ---
+st.divider()
+st.subheader("📊 已录入数据汇总")
+
+if st.button(L['refresh']):
+    # 强制不使用缓存读取最新数据
+    df_all = conn.read(ttl=0)
+    st.session_state['current_df'] = df_all
+
+if 'current_df' in st.session_state:
+    df_display = st.session_state['current_df']
+    st.dataframe(df_display, use_container_width=True)
+
+    # --- 导出按钮区域 ---
+    st.write("📥 **选择导出格式 (Export):**")
+    c1, c2 = st.columns(2)
+
+    with c1:
+        # 导出为 Excel
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df_display.to_excel(writer, index=False, sheet_name='Sheet1')
+        st.download_button(
+            label="💾 导出为 Excel",
+            data=output.getvalue(),
+            file_name=f"Quality_Report_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    with c2:
+        # 导出为 PDF (简单的降级处理方案)
+        if st.button("🖨️ 生成 PDF 报告"):
             try:
-                # 必须确保使用的是 fpdf2 库
+                from fpdf import FPDF
                 pdf = FPDF()
                 pdf.add_page()
                 
-                # 字体加载逻辑
-                font_path = "NotoSansSC-Regular.ttf" # 请确保 GitHub 根目录有此文件
-                
-                if os.path.exists(font_path):
-                    pdf.add_font('ChineseFont', '', font_path)
-                    pdf.set_font('ChineseFont', size=16)
-                    
-                    # 写入中文内容 (fpdf2 自动处理 UTF-8，禁止再加 .encode('latin-1'))
-                    pdf.cell(200, 10, txt=f"品质记录: {p_id}", ln=True, align='C')
-                    pdf.set_font('ChineseFont', size=12)
-                    pdf.ln(10)
-                    pdf.cell(200, 10, txt=f"项目名称: {p_name}", ln=True)
-                    pdf.multi_cell(0, 10, txt=f"问题描述: {desc}")
+                # 尝试加载字体，如果加载不到就不出中文，至少不报错
+                font_file = "NotoSansSC-Regular.ttf"
+                import os
+                if os.path.exists(font_file):
+                    pdf.add_font('Chinese', '', font_file)
+                    pdf.set_font('Chinese', size=12)
+                    pdf.cell(200, 10, txt="品质问题报告 (Quality Report)", ln=True, align='C')
                 else:
-                    # 降级方案：未找到字体时显示英文，防止崩溃
-                    pdf.set_font("Arial", size=16)
-                    pdf.cell(200, 10, txt=f"Quality Report: {p_id}", ln=True, align='C')
-                    st.info("ℹ️ 未检测到中文字体文件，PDF 将以英文显示。")
+                    pdf.set_font("Arial", size=12)
+                    pdf.cell(200, 10, txt="Quality Issue Report (Font Missing)", ln=True, align='C')
 
-                pdf.cell(200, 10, txt=f"Date: {timestamp}", ln=True)
+                pdf.ln(10)
+                # 只导出前5条作为预览，防止数据量太大导致排版崩溃
+                for i, row in df_display.tail(5).iterrows():
+                    pdf.multi_cell(0, 10, txt=f"ID: {row[L['proj_id']]} | Cat: {row[L['cat']]}")
+                    pdf.multi_cell(0, 10, txt=f"Desc: {row[L['desc']]}")
+                    pdf.cell(0, 5, "---" * 10, ln=True)
 
-                # 生成 PDF 字节流
-                pdf_output = pdf.output()
-                
-                st.download_button(
-                    label="📥 下载 PDF 报告",
-                    data=bytes(pdf_output),
-                    file_name=f"Report_{p_id}.pdf",
-                    mime="application/pdf"
-                )
-            except Exception as pdf_err:
-                # 即使 PDF 失败，也不会影响上面已经成功的 Google Sheets 保存
-                st.warning(f"⚠️ 数据已保存，但 PDF 生成失败: {pdf_err}")
-
-        except Exception as sheet_err:
-            st.error(f"❌ 写入 Google Sheets 失败: {sheet_err}")
-
-# --- 5. 实时汇总展示 ---
-st.divider()
-if st.button(L['refresh']):
-    try:
-        # ttl=0 强制跳过缓存，读取最新录入的数据
-        df_all = conn.read(ttl=0)
-        st.subheader("📊 云端全量数据明细")
-        st.dataframe(df_all, use_container_width=True)
-    except Exception as e:
-        st.info("当前云端无数据，或者连接尚未配置成功。")
+                pdf_bytes = pdf.output()
+                st.download_button("📥 点击下载生成的 PDF", data=bytes(pdf_bytes), file_name="Report.pdf")
+            except Exception as e:
+                st.error(f"PDF 导出遇到一点小麻烦: {e}")
